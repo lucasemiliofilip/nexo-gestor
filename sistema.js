@@ -3,7 +3,7 @@
 // ===================================================================
 
 const STORAGE_KEY = 'nexo_gestor_cloud_v1';
-const DEFAULT_APPSCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxa-XRZSlLd0HJrhJl4zeAItvI1ayuSnC9sreb16tfH_Eqd9EUML-d84mOZ3EF7b-z4eg/exec';
+const DEFAULT_APPSCRIPT_URL = ''; // En blanco por defecto para que no se mezclen los datos de los clientes
 
 let donutChartInstance = null;
 let currentEditingId = null;
@@ -11,7 +11,7 @@ let tempProdImageBase64 = '';
 
 const defaultState = {
     bizConfig: { name: 'Mi Distribuidora / Comercio', contact: 'Presidencia Roque Sáenz Peña, Chaco' },
-    cloudUrl: DEFAULT_APPSCRIPT_URL,
+    cloudUrl: '',
     profitMode: 'margin',
     categories: ['Bebidas', 'Comestibles-Arroces', 'Comestible-Fideos', 'Aceites', 'Almacén', 'Repuestos'],
     suppliers: ['Directo de Fábrica', 'Distribuidor Mayorista', 'Diarco / Central'],
@@ -52,7 +52,7 @@ function sanitizeState(data) {
         ...defaultState,
         ...data,
         bizConfig: data.bizConfig || defaultState.bizConfig,
-        cloudUrl: data.cloudUrl || DEFAULT_APPSCRIPT_URL,
+        cloudUrl: (typeof data.cloudUrl === 'string') ? data.cloudUrl : '',
         categories: Array.isArray(data.categories) && data.categories.length > 0 ? data.categories : defaultState.categories,
         suppliers: Array.isArray(data.suppliers) && data.suppliers.length > 0 ? data.suppliers : defaultState.suppliers,
         clients: Array.isArray(data.clients) ? data.clients : defaultState.clients,
@@ -73,7 +73,7 @@ function saveState() {
     }
 }
 
-// --- NAVEGACIÓN TOTALMENTE CONTROLADA (INCLUYE TAB 7) ---
+// --- NAVEGACIÓN TOTALMENTE CONTROLADA ---
 function switchTab(tabId) {
     try {
         ['tab1', 'tab2', 'tab3', 'tab4', 'tab5', 'tab6', 'tab7'].forEach(id => {
@@ -97,7 +97,6 @@ function switchTab(tabId) {
             }
         }
         
-        // Si va a la pestaña de caja, calcula automáticamente los números de hoy
         if (tabId === 'tab7' && typeof calculateDailyClosing === 'function') {
             calculateDailyClosing();
         }
@@ -108,9 +107,23 @@ function switchTab(tabId) {
     }
 }
 
-// --- SINCRONIZACIÓN GOOGLE SHEETS ---
+// --- REFRESCADO GLOBAL DE VISTAS ---
+function refreshAllViews() {
+    renderExpensesTab();
+    if (typeof renderCatalog === 'function') renderCatalog();
+    if (typeof renderMixTab === 'function') renderMixTab();
+    if (typeof renderSalesHistory === 'function') renderSalesHistory();
+    if (typeof renderSellersList === 'function') renderSellersList();
+    if (typeof updateCartPreviews === 'function') updateCartPreviews();
+    updateCloudStatusUI(Boolean(state.cloudUrl));
+}
+
+// --- SINCRONIZACIÓN GOOGLE SHEETS (CONFIGURABLE POR CLIENTE) ---
 function syncToCloud() {
-    if (!state.cloudUrl || !state.cloudUrl.startsWith('https://script.google.com')) return;
+    if (!state.cloudUrl || !state.cloudUrl.startsWith('https://script.google.com')) {
+        updateCloudStatusUI(false);
+        return;
+    }
     fetch(state.cloudUrl, {
         method: 'POST',
         mode: 'no-cors',
@@ -121,8 +134,8 @@ function syncToCloud() {
 }
 
 function uploadAllToCloud() {
-    if (!state.cloudUrl) {
-        showToast('Configurá la URL de Google Sheets');
+    if (!state.cloudUrl || !state.cloudUrl.startsWith('https://script.google.com')) {
+        showToast('Configurá la URL de Google Sheets primero');
         return;
     }
     showToast('Subiendo todos los datos a Google Sheets...');
@@ -132,14 +145,17 @@ function uploadAllToCloud() {
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(state)
     }).then(() => {
-        showToast('¡Sistema completo guardado en Google Drive!');
+        showToast('¡Sistema guardado en Google Drive!');
         updateCloudStatusUI(true);
-    }).catch(() => showToast('Error al subir a Google'));
+    }).catch(() => {
+        showToast('Error al subir a Google Sheets');
+        updateCloudStatusUI(false);
+    });
 }
 
 function syncFromCloudNow() {
-    if (!state.cloudUrl) {
-        showToast('Primero guardá la URL de Google Sheets');
+    if (!state.cloudUrl || !state.cloudUrl.startsWith('https://script.google.com')) {
+        showToast('Primero guardá la URL válida de Google Sheets');
         return;
     }
     showToast('Descargando datos de la nube...');
@@ -159,7 +175,7 @@ function syncFromCloudNow() {
 
 function openCloudModal() {
     const el = document.getElementById('cloudUrlInput');
-    if (el) el.value = state.cloudUrl || DEFAULT_APPSCRIPT_URL;
+    if (el) el.value = state.cloudUrl || '';
     const modal = document.getElementById('cloudModal');
     if (modal) modal.classList.add('open');
 }
@@ -171,10 +187,18 @@ function closeCloudModal() {
 
 function saveCloudConfig() {
     const el = document.getElementById('cloudUrlInput');
-    state.cloudUrl = (el ? el.value.trim() : '') || DEFAULT_APPSCRIPT_URL;
+    const inputVal = el ? el.value.trim() : '';
+    state.cloudUrl = inputVal;
     saveState();
     closeCloudModal();
-    syncFromCloudNow();
+    
+    if (state.cloudUrl) {
+        showToast('Enlace de Google Sheets guardado');
+        uploadAllToCloud();
+    } else {
+        showToast('Modo sin conexión a la nube');
+        updateCloudStatusUI(false);
+    }
 }
 
 function updateCloudStatusUI(connected) {
@@ -200,6 +224,12 @@ function updateCloudStatusUI(connected) {
         icon.className = 'fa-solid fa-cloud text-slate-400';
     }
 }
+
+// Inicializa el indicador de conexión al cargar la app
+window.addEventListener('DOMContentLoaded', () => {
+    updateCloudStatusUI(Boolean(state.cloudUrl));
+    refreshAllViews();
+});
 
 // --- UTILIDADES ---
 function fmtARS(val) {
