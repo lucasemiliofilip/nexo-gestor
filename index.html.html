@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="es" class="dark h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexo | Gestor Comercial PRO</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { bgMain: '#060b14', bgCard: '#0c1322', bgInput: '#111a2e', borderDark: '#1e293b' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #060b14; color: #f1f5f9; font-family: 'Inter', sans-serif; }
+        .card-pro { background-color: #0c1322; border: 1px solid #1e293b; border-radius: 0.85rem; }
+        .input-pro { background-color: #111a2e; border: 1px solid #26354d; color: #ffffff; border-radius: 0.5rem; }
+        .input-pro:focus { border-color: #3b82f6; outline: none; }
+        .tab-pill { padding: 0.6rem 1.1rem; border-radius: 0.65rem; font-size: 0.82rem; font-weight: 600; color: #94a3b8; border: 1px solid transparent; display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+        .tab-pill:hover { color: #e2e8f0; background-color: rgba(30, 41, 59, 0.4); }
+        .tab-pill.active { background-color: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.4); }
+        .tab-pill.active-purple { background-color: rgba(139, 92, 246, 0.12); color: #34d399; border-color: rgba(16, 185, 129, 0.45); }
+        .tab-pill.active-emerald { background-color: rgba(16, 185, 129, 0.15); color: #10b981; border-color: rgba(16, 185, 129, 0.5); }
+        .modal-backdrop { display: none; position: fixed; inset: 0; z-index: 50; background-color: rgba(0, 0, 0, 0.82); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 1rem; }
+        .modal-backdrop.open { display: flex !important; }
+        .nexo-logo-box { background: radial-gradient(circle at center, #113259 0%, #091c36 100%); border: 1px solid #23456e; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+    </style>
+<!-- Configuración PWA y soporte móvil -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f172a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nexo PRO">
+</head>
+<body class="min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
+
+    <header class="sticky top-0 z-30 bg-[#060b14]/95 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3">
+        <div class="max-w-[1440px] mx-auto flex flex-col gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3.5">
+                    <div class="nexo-logo-box px-3.5 py-2 rounded-xl flex flex-col items-center justify-center select-none shadow-xl">
+                        <div class="text-2xl font-black tracking-tight leading-none flex items-center text-white">
+                            <span>Ne</span>
+                            <span class="relative inline-block mx-0.5">
+                                <span class="text-white">X</span>
+                                <span class="absolute inset-0 text-[#d97724] font-black" style="clip-path: polygon(65% 0, 100% 0, 35% 100%, 0 100%);">X</span>
+                            </span>
+                            <span>o</span>
+                        </div>
+                        <span class="text-[8px] font-medium text-slate-300 tracking-wider mt-0.5">Gestor Comercial PRO</span>
+                    </div>
+
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 id="headerBizName" class="text-lg font-extrabold tracking-tight text-white">Mi Distribuidora / Comercio</h1>
+                            <button onclick="openBizNameModal()" class="text-xs text-slate-400 hover:text-emerald-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                                <i class="fa-solid fa-pen-to-square"></i> Editar
+                            </button>
+                            <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">PRO</span>
+                        </div>
+                        <p class="text-xs text-slate-400">Control de Estructura, Rentabilidad & Sincronización en la Nube</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <button onclick="openCloudModal()" id="btnCloudStatus" class="flex items-center gap-2 bg-[#0c1322] hover:bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-full text-xs">
+                        <span id="cloudStatusDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <i class="fa-solid fa-cloud text-emerald-400" id="cloudIcon"></i>
+                        <span id="cloudStatusText" class="font-semibold text-emerald-300">Google Sheets</span>
+                    </button>
+
+                    <div class="hidden xl:flex items-center gap-2 bg-[#0c1322] border border-slate-800 px-3 py-1.5 rounded-full text-xs">
+                        <i class="fa-solid fa-building text-blue-400"></i>
+                        <span class="text-slate-400">Gastos Fijos:</span>
+                        <span id="headerFixedTotal" class="font-mono font-bold text-blue-400">$ 0,00</span>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 bg-[#0c1322] border border-slate-800 p-1 rounded-lg">
+                        <button onclick="exportBackupJSON()" title="Descargar respaldo" class="px-2.5 py-1.5 rounded-md text-xs font-semibold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                            <i class="fa-solid fa-download"></i> Copia
+                        </button>
+                        <label title="Restaurar respaldo" class="cursor-pointer px-2.5 py-1.5 rounded-md text-xs font-semibold bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 flex items-center gap-1.5">
+                            <i class="fa-solid fa-upload"></i> Restaurar
+                            <input type="file" id="restoreFileInput" accept=".json" class="hidden" onchange="importBackupJSON(event)">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-t border-slate-800/60">
+                <button onclick="switchTab('tab1')" id="btn-tab1" class="tab-pill active">
+                    <i class="fa-solid fa-building-columns"></i>
+                    <span>1. Estructura & Gastos</span>
+                    <span id="badge-tab1" class="ml-1 px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 rounded-full text-[11px] font-mono">0</span>
+                </button>
+                <button onclick="switchTab('tab2')" id="btn-tab2" class="tab-pill">
+                    <i class="fa-solid fa-tags"></i>
+                    <span>2. Calculadora</span>
+                </button>
+                <button onclick="switchTab('tab3')" id="btn-tab3" class="tab-pill">
+                    <i class="fa-solid fa-ranking-star text-amber-400"></i>
+                    <span>3. Catálogo & PDF</span>
+                    <span id="badge-tab3" class="ml-1 px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded-full text-[11px] font-mono">0</span>
+                </button>
+                <button onclick="switchTab('tab4')" id="btn-tab4" class="tab-pill">
+                    <i class="fa-solid fa-bullseye text-purple-400"></i>
+                    <span>4. Mix y Equilibrio</span>
+                </button>
+                <button onclick="switchTab('tab5')" id="btn-tab5" class="tab-pill">
+                    <i class="fa-solid fa-cart-shopping text-emerald-400"></i>
+                    <span>5. Ventas y Caja</span>
+                    <span id="badge-tab5" class="ml-1 px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded-full text-[11px] font-mono">0</span>
+                </button>
+                <button onclick="switchTab('tab6')" id="btn-tab6" class="tab-pill">
+                    <i class="fa-solid fa-users text-blue-400"></i>
+                    <span>6. Vendedores & Comisiones</span>
+                    <span id="sellerCountBadgeTab" class="ml-1 px-1.5 py-0.2 bg-blue-500/20 text-blue-300 rounded-full text-[11px] font-mono">1</span>
+                </button>
+                <button onclick="switchTab('tab7')" id="btn-tab7" class="tab-pill">
+                    <i class="fa-solid fa-vault text-emerald-400"></i>
+                    <span class="font-bold text-white">7. Cierre de Caja</span>
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-[1440px] w-full mx-auto px-4 lg:px-8 py-6">
+
+        <!-- TAB 1: GASTOS -->
+        <section id="tab1" class="space-y-6">
+            <div class="card-pro p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-white">¿Cuánto Cuesta Tener el Negocio Abierto?</h2>
+                        <p class="text-sm text-slate-400 mt-1">Cargá todos los gastos mensuales fijos para determinar tu punto de equilibrio.</p>
+                    </div>
+                    <button onclick="switchTab('tab2')" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm px-5 py-2.5 rounded-xl flex items-center gap-2">
+                        <span>Ir a Calculadora</span> <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-[#09101d] border border-slate-800 rounded-xl p-5">
+                        <span class="text-xs font-medium text-slate-400">Total Gastos Fijos Mensuales</span>
+                        <div id="t1-totalMonthly" class="text-2xl lg:text-3xl font-mono font-extrabold text-blue-400 mt-1.5">$ 0,00</div>
+                    </div>
+                    <div class="bg-[#09101d] border border-amber-500/20 rounded-xl p-5">
+                        <span class="text-xs font-medium text-slate-400">Costo Diario de Persiana (24 días)</span>
+                        <div id="t1-dailyCost" class="text-2xl lg:text-3xl font-mono font-extrabold text-amber-400 mt-1.5">$ 0,00</div>
+                    </div>
+                    <div class="bg-[#09101d] border border-purple-500/20 rounded-xl p-5">
+                        <span class="text-xs font-medium text-slate-400">Costo Fijo Semanal (4 semanas)</span>
+                        <div id="t1-weeklyCost" class="text-2xl lg:text-3xl font-mono font-extrabold text-purple-400 mt-1.5">$ 0,00</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div class="lg:col-span-4 card-pro p-6">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-white mb-4"><i class="fa-solid fa-circle-plus text-emerald-400 mr-2"></i>NUEVO GASTO FIJO</h3>
+                    <form onsubmit="addExpense(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Concepto</label>
+                            <input type="text" id="expName" required placeholder="Ej: Alquiler, Luz, Internet..." class="input-pro w-full px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Categoría</label>
+                            <select id="expCategory" class="input-pro w-full px-3 py-2 text-sm">
+                                <option value="servicios">⚡ Servicios Públicos</option>
+                                <option value="inmueble">🏢 Inmueble / Galpón</option>
+                                <option value="logistica">🚚 Logística y Vehículos</option>
+                                <option value="personal">👥 Personal y Sueldos</option>
+                                <option value="gestion">💼 Gestión e Impuestos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-300 mb-1">Monto Mensual ($)</label>
+                            <input type="number" id="expAmount" required min="0" step="any" placeholder="190000" class="input-pro w-full px-3 py-2 text-sm font-mono">
+                        </div>
+                        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs uppercase py-3 rounded-lg">GUARDAR GASTO</button>
+                    </form>
+                </div>
+                <div class="lg:col-span-8 space-y-4">
+                    <div id="expensesCategoryContainer" class="space-y-4"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: CALCULADORA DE PRECIOS -->
+        <section id="tab2" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div class="lg:col-span-7 space-y-5">
+                    <div class="card-pro p-6 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-extrabold uppercase tracking-wider text-white">1. IDENTIFICACIÓN, PROVEEDOR & COSTOS</span>
+                            <div id="editModeIndicator" class="hidden flex items-center gap-2">
+                                <span class="text-[11px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded font-bold">Editando</span>
+                                <button onclick="cancelProductEdit()" class="text-[11px] text-slate-400 underline">Cancelar</button>
+                            </div>
+                        </div>
+                        <div class="flex gap-4 items-start">
+                            <div class="w-28 h-28 rounded-xl bg-white border border-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
+                                <img id="calcPhotoImg" src="" class="w-full h-full object-contain hidden">
+                                <span id="calcPhotoPlaceholder" class="text-[10px] text-slate-400 text-center">Sin Foto</span>
+                            </div>
+                            <div class="flex-1 space-y-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1">Nombre del Artículo</label>
+                                    <input type="text" id="calcProdName" value="Fideo guisero Doña pupa 500g" oninput="runCalculator()" class="input-pro w-full px-3 py-2 text-sm font-semibold">
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="block text-xs font-semibold text-slate-300">Categoría</label>
+                                            <button type="button" onclick="openNewCategoryModal()" class="text-[10px] text-emerald-400 hover:text-emerald-300 font-extrabold">+ Nueva</button>
+                                        </div>
+                                        <select id="calcProdCategory" class="input-pro w-full px-2.5 py-2 text-xs text-white font-semibold"></select>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="block text-xs font-semibold text-amber-400">Proveedor</label>
+                                            <button type="button" onclick="openNewSupplierModal()" class="text-[10px] text-amber-400 hover:text-amber-300 font-extrabold">+ Nuevo</button>
+                                        </div>
+                                        <select id="calcProdSupplier" class="input-pro w-full px-2.5 py-2 text-xs text-amber-300 font-semibold"></select>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3 items-center">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-slate-300 mb-1">Presentación / Empaque</label>
+                                        <input type="text" id="calcProdGrams" value="Bulto x 15 unid" placeholder="Ej: Bulto x 15" class="input-pro w-full px-2.5 py-1.5 text-xs">
+                                    </div>
+                                    <div>
+                                        <label class="cursor-pointer text-xs font-bold text-blue-400 hover:underline block pt-4">
+                                            <span>📷 Cargar Foto</span>
+                                            <input type="file" id="calcFileInput" accept="image/*" class="hidden" onchange="handleProductPhotoUpload(event)">
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Costo Proveedor ($)</label>
+                                <input type="number" id="calcCost" value="680" min="0" step="any" oninput="runCalculator()" class="input-pro w-full px-3 py-2 text-sm font-mono font-bold">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Empaque / Flete ($)</label>
+                                <input type="number" id="calcPack" value="0" min="0" step="any" oninput="runCalculator()" class="input-pro w-full px-3 py-2 text-sm font-mono font-bold">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-pro p-6 space-y-4">
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-white">2. ABSORCIÓN DE FIJOS & COMISIÓN</span>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-[#09101d] p-3.5 rounded-xl border border-slate-800">
+                                <div class="flex justify-between text-xs mb-1 text-blue-400 font-semibold"><span>Aporte a Fijos</span><span id="lblFixedPct">5.6%</span></div>
+                                <input type="number" id="calcFixedPct" value="5.633" min="0" max="80" step="any" oninput="runCalculator()" class="input-pro w-full px-3 py-1.5 text-sm font-mono font-bold">
+                            </div>
+                            <div class="bg-[#09101d] p-3.5 rounded-xl border border-slate-800">
+                                <div class="flex justify-between text-xs mb-1 text-purple-400 font-semibold"><span>Comisión Vendedor</span><span id="lblSellerPct">7.0%</span></div>
+                                <input type="number" id="calcSellerPct" value="7" min="0" max="50" step="any" oninput="runCalculator()" class="input-pro w-full px-3 py-1.5 text-sm font-mono font-bold">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-pro p-6 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-extrabold uppercase tracking-wider text-white">3. GANANCIA LIMPIA & IMPUESTOS</span>
+                            <div class="inline-flex rounded-lg bg-[#09101d] p-0.5 border border-slate-800 text-[11px]">
+                                <button type="button" id="btnModeMargin" onclick="setProfitMode('margin')" class="px-2 py-1 rounded font-semibold bg-emerald-500/20 text-emerald-400">Margen s/Venta</button>
+                                <button type="button" id="btnModeMarkup" onclick="setProfitMode('markup')" class="px-2 py-1 text-slate-400">Markup s/Costo</button>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1 text-emerald-400 font-semibold"><span>Ganancia Limpia Empresa</span><span id="lblProfitPct">4.6%</span></div>
+                            <input type="number" id="calcProfitPct" value="4.666" min="0" max="85" step="any" oninput="runCalculator()" class="input-pro w-full px-3 py-2 text-sm font-mono font-bold">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800">
+                            <div><label class="block text-[11px] text-slate-400 mb-1">Comisión Cobro %</label><input type="number" id="calcPayFee" value="0" min="0" oninput="runCalculator()" class="input-pro w-full px-2 py-1.5 text-xs font-mono"></div>
+                            <div><label class="block text-[11px] text-slate-400 mb-1">IIBB %</label><input type="number" id="calcIIBB" value="0" min="0" oninput="runCalculator()" class="input-pro w-full px-2 py-1.5 text-xs font-mono"></div>
+                            <div><label class="block text-[11px] text-slate-400 mb-1">IVA %</label><select id="calcIVA" onchange="runCalculator()" class="input-pro w-full px-2 py-1.5 text-xs font-mono"><option value="0" selected>0%</option><option value="10.5">10.5%</option><option value="21">21%</option></select></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-5 space-y-5">
+                    <div class="card-pro p-6 border-emerald-500/30 bg-gradient-to-b from-[#0d192b] to-[#0a1220] space-y-4">
+                        <div class="flex justify-between items-center"><span class="text-[11px] font-extrabold uppercase text-emerald-400">PRECIO SUGERIDO (PVP)</span><span id="resMultiplierBadge" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300">x1.21</span></div>
+                        <div class="text-4xl font-mono font-extrabold text-white" id="resFinalPVP">$ 822,25</div>
+                        <div class="space-y-2 pt-1 text-xs">
+                            <div class="flex justify-between px-3.5 py-2 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-300"><span>Ganancia Limpia:</span><strong id="resNetProfitAmt" class="font-mono">$ 38,37</strong></div>
+                            <div class="flex justify-between px-3.5 py-2 rounded-lg bg-amber-950/30 border border-amber-500/30 text-amber-300"><span>Rentabilidad (ROI):</span><strong id="resROIPct" class="font-mono">5.6%</strong></div>
+                            <div class="flex justify-between px-3.5 py-2 rounded-lg bg-purple-950/40 border border-purple-500/30 text-purple-300"><span>Comisión Vendedor:</span><strong id="resSellerAmt" class="font-mono">$ 57,56</strong></div>
+                            <div class="flex justify-between px-3.5 py-2 rounded-lg bg-blue-950/40 border border-blue-500/30 text-blue-300"><span>Reserva Fijos:</span><strong id="resFixedAmt" class="font-mono">$ 46,32</strong></div>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-amber-950/20 border border-amber-500/40 text-xs text-amber-300 flex justify-between items-center">
+                            <span>Equilibrio:</span><strong id="resBEUnits" class="font-mono text-sm">22.994 UN.</strong>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 pt-1">
+                            <button onclick="saveProductToCatalog()" id="btnSaveProd" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs uppercase py-3 rounded-xl"><span id="btnSaveProdText">GUARDAR EN CATÁLOGO</span></button>
+                            <button onclick="copyWhatsAppQuote()" class="bg-[#091524] text-emerald-400 border border-emerald-500/40 font-bold text-xs uppercase py-3 rounded-xl">COPIAR PRECIO</button>
+                        </div>
+                    </div>
+                    <div class="card-pro p-5">
+                        <div class="h-44 flex items-center justify-center"><canvas id="priceDonutChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: CATÁLOGO -->
+        <section id="tab3" class="hidden space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="card-pro p-4 border-l-4 border-l-amber-400"><span class="text-[11px] font-bold uppercase text-amber-400">🏆 Más Rentable</span><div id="t3-bestROIProd" class="text-base font-extrabold text-white mt-1 truncate">-</div><div id="t3-bestROIPct" class="text-xs font-mono font-bold text-amber-300">0%</div></div>
+                <div class="card-pro p-4 border-l-4 border-l-emerald-400"><span class="text-[11px] font-bold uppercase text-emerald-400">💵 Mayor Ganancia</span><div id="t3-bestCashProd" class="text-base font-extrabold text-white mt-1 truncate">-</div><div id="t3-bestCashVal" class="text-xs font-mono font-bold text-emerald-400">$ 0,00</div></div>
+                <div class="card-pro p-4 border-l-4 border-l-purple-400"><span class="text-[11px] font-bold uppercase text-purple-400">📊 ROI Promedio</span><div id="t3-avgROI" class="text-2xl font-mono font-extrabold text-purple-300 mt-1">0%</div></div>
+                <div class="card-pro p-4 border-l-4 border-l-blue-400"><span class="text-[11px] font-bold uppercase text-blue-400">🏢 Reserva Fijos Promedio</span><div id="t3-avgFixedAmt" class="text-2xl font-mono font-extrabold text-blue-400 mt-1">$ 0,00</div></div>
+            </div>
+            <div class="card-pro p-6 space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+                    <h2 class="text-lg font-extrabold text-white">Catálogo de Productos & Proveedores</h2>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="catalogViewFilter" onchange="renderCatalog()" class="input-pro px-3 py-1.5 text-xs text-slate-200"><option value="all">Ver Todos</option><option value="selected">Solo Catálogo</option></select>
+                        <select id="catalogCategoryFilter" onchange="renderCatalog()" class="input-pro px-3 py-1.5 text-xs text-emerald-400 font-semibold"></select>
+                        <select id="catalogSupplierFilter" onchange="renderCatalog()" class="input-pro px-3 py-1.5 text-xs text-amber-300 font-semibold"></select>
+                        <button onclick="exportCatalogCSV()" class="bg-slate-800 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700">Excel</button>
+                        <button onclick="openCatalogPDFModal()" class="bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs px-3.5 py-1.5 rounded-lg">Catálogo PDF</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                                <th class="py-2.5 px-3 text-center">PDF</th>
+                                <th class="py-2.5 px-3">Producto / Proveedor</th>
+                                <th class="py-2.5 px-3 text-right">Costo</th>
+                                <th class="py-2.5 px-3 text-right">PVP</th>
+                                <th class="py-2.5 px-3 text-right text-blue-400">Reserva Fijos</th>
+                                <th class="py-2.5 px-3 text-right text-purple-400">Comisión</th>
+                                <th class="py-2.5 px-3 text-right text-emerald-400">Ganancia Limpia</th>
+                                <th class="py-2.5 px-3 text-center text-amber-300">ROI %</th>
+                                <th class="py-2.5 px-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="catalogTableBody" class="divide-y divide-slate-800/60"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: MIX -->
+        <section id="tab4" class="hidden space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="card-pro p-4 border-2 border-amber-500/60"><span class="text-[11px] font-extrabold uppercase text-amber-400">PUNTO EQUILIBRIO</span><div id="t4-beTotalMoney" class="text-2xl font-mono font-extrabold text-amber-400 my-1">$ 0,00</div></div>
+                <div class="card-pro p-4"><span class="text-[11px] font-bold uppercase text-blue-400">GASTOS A CUBRIR</span><div id="t4-fixedToCover" class="text-2xl font-mono font-extrabold text-blue-400 my-1">$ 0,00</div></div>
+                <div class="card-pro p-4"><span class="text-[11px] font-bold uppercase text-cyan-400">RESERVA RECAUDADA</span><div id="t4-fixedCollected" class="text-2xl font-mono font-extrabold text-cyan-400 my-1">$ 0,00</div></div>
+                <div class="card-pro p-4"><span class="text-[11px] font-bold uppercase text-emerald-400">GANANCIA LIMPIA</span><div id="t4-companyNetProfit" class="text-2xl font-mono font-extrabold text-emerald-400 my-1">$ 0,00</div></div>
+            </div>
+            <div class="card-pro p-6 space-y-4">
+                <div class="flex justify-between items-center"><h3 class="text-sm font-extrabold uppercase text-white">SIMULADOR DE MIX DE VENTAS</h3><button onclick="autoDistributeBreakEvenMix()" class="bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs uppercase px-4 py-2.5 rounded-xl">⚡ Mix Equilibrado</button></div>
+                <div class="overflow-x-auto"><table class="w-full text-left text-xs"><tbody id="mixTableBody" class="divide-y divide-slate-800/60"></tbody></table></div>
+            </div>
+        </section>
+
+        <!-- TAB 5: VENTAS -->
+        <section id="tab5" class="hidden space-y-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="card-pro p-4 border-l-4 border-l-emerald-500"><span class="text-[11px] font-bold uppercase text-slate-400">Ventas Facturadas</span><div id="t5-totalBilled" class="text-2xl font-mono font-extrabold text-white mt-1">$ 0,00</div></div>
+                <div class="card-pro p-4 border-l-4 border-l-amber-500"><span class="text-[11px] font-bold uppercase text-amber-400">Falta p/ Equilibrio</span><div id="t5-remainingBreakEven" class="text-2xl font-mono font-extrabold text-amber-300 mt-1">$ 0,00</div></div>
+                <div class="card-pro p-4 border-l-4 border-l-cyan-500"><span class="text-[11px] font-bold uppercase text-cyan-400">Cobrado en Caja</span><div id="t5-cashPaid" class="text-2xl font-mono font-extrabold text-cyan-300 mt-1">$ 0,00</div></div>
+                <div class="card-pro p-4 border-l-4 border-l-rose-500"><span class="text-[11px] font-bold uppercase text-rose-400">Plata en la Calle (Fiado)</span><div id="t5-streetDebt" class="text-2xl font-mono font-extrabold text-rose-400 mt-1">$ 0,00</div></div>
+                <div class="card-pro p-4 border-l-4 border-l-purple-500"><span class="text-[11px] font-bold uppercase text-emerald-400">Tu Ganancia Limpia</span><div id="t5-realNetProfit" class="text-2xl font-mono font-extrabold text-emerald-400 mt-1">$ 0,00</div><span id="t5-realFixedFund" class="text-[10px] text-blue-400 block mt-0.5">Reserva Fijos: $ 0,00</span></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div class="lg:col-span-5 card-pro p-6 space-y-4">
+                    <div class="flex justify-between items-center"><span class="text-xs font-extrabold uppercase text-white"><i class="fa-solid fa-cart-plus text-emerald-400 mr-1.5"></i>REGISTRAR VENTA</span><button onclick="openClientDirectoryModal()" class="text-[10px] text-blue-400 bg-blue-950/40 px-2 py-1 rounded border border-blue-500/30">Clientes</button></div>
+                    <div class="space-y-3 bg-[#09101d] p-3.5 rounded-xl border border-slate-800">
+                        <select id="saleClientSelect" onchange="onSelectClientChange()" class="input-pro w-full px-3 py-2 text-xs font-semibold text-amber-300"><option value="">-- Cliente Nuevo / Escribir a Mano --</option></select>
+                        <input type="text" id="saleClientName" placeholder="Nombre o Razón Social" class="input-pro w-full px-3 py-2 text-xs font-semibold">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="saleClientAddr" placeholder="Dirección" class="input-pro w-full px-3 py-2 text-xs">
+                            <input type="text" id="saleClientPhone" placeholder="Teléfono" class="input-pro w-full px-3 py-2 text-xs font-mono">
+                        </div>
+                        <div class="flex justify-end"><button onclick="saveClientDirectly()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded">Guardar Cliente</button></div>
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+                            <div><label class="block text-[10px] text-slate-400 mb-1">Vendedor</label><select id="saleSellerName" class="input-pro w-full px-2.5 py-1.5 text-xs text-purple-300 font-semibold"></select></div>
+                            <div><label class="block text-[10px] text-slate-400 mb-1">Estado</label><select id="salePayStatus" class="input-pro w-full px-2.5 py-1.5 text-xs font-bold"><option value="paid">🟢 Pagado</option><option value="pending">🟡 Fiado</option></select></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 bg-[#09101d] p-3.5 rounded-xl border border-blue-500/30">
+                        <select id="cartProductSelect" onchange="updateLiveCartItemPreview()" class="input-pro w-full px-3 py-2 text-xs"></select>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div><label class="block text-[10px] text-slate-400 mb-1">Cantidad</label><input type="number" id="cartItemQty" value="1" min="1" oninput="updateLiveCartItemPreview()" class="input-pro w-full px-2 py-1 text-xs font-bold text-center"></div>
+                            <div><label class="block text-[10px] text-slate-400 mb-1">Descuento %</label><input type="number" id="cartItemDisc" value="0" min="0" max="100" oninput="updateLiveCartItemPreview()" class="input-pro w-full px-2 py-1 text-xs font-bold text-amber-300 text-center"></div>
+                            <div class="flex items-end"><button onclick="addItemToCart()" class="w-full bg-blue-600 text-white font-extrabold text-xs py-1.5 rounded">+ Agregar</button></div>
+                        </div>
+                        <div id="cartItemLivePreview" class="p-2.5 rounded bg-slate-900 border border-slate-800 text-[11px] space-y-1">
+                            <div class="flex justify-between"><span class="text-slate-400">Subtotal:</span><strong id="liveItemSubtotal" class="font-mono text-emerald-400">$ 0,00</strong></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Unitario:</span><span id="liveItemUnitPVP" class="font-mono text-slate-200">$ 0,00</span></div>
+                        </div>
+                    </div>
+
+                    <div id="cartItemsList" class="space-y-1.5 max-h-40 overflow-y-auto"></div>
+
+                    <div class="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-1">
+                        <div class="flex justify-between font-mono font-bold text-sm text-white"><span>TOTAL:</span><strong id="cartOrderGrandTotal" class="text-emerald-400">$ 0,00</strong></div>
+                        <div class="flex justify-between text-blue-300 text-[11px]"><span>Reserva Fijos:</span><strong id="cartOrderFixed" class="font-mono">$ 0,00</strong></div>
+                        <div class="flex justify-between text-purple-300 text-[11px]"><span>Comisión:</span><strong id="cartOrderComm" class="font-mono">$ 0,00</strong></div>
+                        <div class="flex justify-between text-emerald-300 text-[11px]"><span>Ganancia Limpia:</span><strong id="cartOrderProfit" class="font-mono">$ 0,00</strong></div>
+                    </div>
+
+                    <button onclick="commitOrderSale()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs uppercase py-3 rounded-xl">REGISTRAR VENTA</button>
+                </div>
+
+                <div class="lg:col-span-7 card-pro p-5 space-y-4">
+                    <div class="flex justify-between items-center"><h3 class="text-sm font-extrabold uppercase text-white">HISTORIAL DE VENTAS</h3><button onclick="exportSalesCSV()" class="bg-slate-800 text-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700">CSV</button></div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                                    <th class="py-2 px-2">Cliente</th>
+                                    <th class="py-2 px-2 text-right">Total</th>
+                                    <th class="py-2 px-2 text-right text-blue-400">Fijos</th>
+                                    <th class="py-2 px-2 text-right text-purple-400">Comisión</th>
+                                    <th class="py-2 px-2 text-right text-emerald-400">Ganancia</th>
+                                    <th class="py-2 px-2 text-center">Estado</th>
+                                    <th class="py-2 px-2 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salesHistoryBody" class="divide-y divide-slate-800/60"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 6: VENDEDORES -->
+        <section id="tab6" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div class="lg:col-span-4 space-y-5">
+                    <div class="card-pro p-6 border-blue-500/30">
+                        <h3 class="text-xs font-bold text-white uppercase mb-4"><i class="fa-solid fa-user-plus text-blue-400 mr-2"></i>NUEVO VENDEDOR</h3>
+                        <form onsubmit="addSeller(event)" class="space-y-4">
+                            <div><label class="block text-xs text-slate-300 mb-1">Nombre y Apellido</label><input type="text" id="sellerName" required placeholder="Ej: Daniel Silva" class="input-pro w-full px-3 py-2 text-sm"></div>
+                            <div><label class="block text-xs text-slate-300 mb-1">Teléfono</label><input type="text" id="sellerPhone" placeholder="Ej: 3644123456" class="input-pro w-full px-3 py-2 text-sm font-mono"></div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs uppercase py-3 rounded-lg">GUARDAR VENDEDOR</button>
+                        </form>
+                    </div>
+                    <div class="card-pro p-5">
+                        <h3 class="text-xs font-extrabold text-white uppercase mb-3">Vendedores Activos</h3>
+                        <div id="sellersListContainer" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 card-pro p-6 space-y-5">
+                    <h2 class="text-lg font-extrabold text-white flex items-center gap-2"><i class="fa-solid fa-calculator text-purple-400"></i> Liquidador de Comisiones</h2>
+                    <div class="bg-[#09101d] p-4 rounded-xl border border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 mb-1">Vendedor</label>
+                            <select id="liqSellerSelect" class="input-pro w-full px-3 py-2 text-sm text-purple-300 font-semibold"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-300 mb-1">Rango Rápido</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" onclick="setLiqDates('month')" class="px-2 py-1.5 bg-slate-800 text-white text-[10px] font-bold rounded">Mes</button>
+                                <button type="button" onclick="setLiqDates('q1')" class="px-2 py-1.5 bg-slate-800 text-white text-[10px] font-bold rounded">1° Quinc.</button>
+                                <button type="button" onclick="setLiqDates('q2')" class="px-2 py-1.5 bg-slate-800 text-white text-[10px] font-bold rounded">2° Quinc.</button>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2 grid grid-cols-2 gap-4">
+                            <div><label class="block text-[10px] text-slate-400 mb-1">Desde</label><input type="date" id="liqDateFrom" class="input-pro w-full px-3 py-1.5 text-xs font-mono"></div>
+                            <div><label class="block text-[10px] text-slate-400 mb-1">Hasta</label><input type="date" id="liqDateTo" class="input-pro w-full px-3 py-1.5 text-xs font-mono"></div>
+                        </div>
+                    </div>
+                    <button onclick="generateSellerReport()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-sm uppercase py-3 rounded-xl">Generar Liquidación</button>
+                    <div id="liqResultsArea" class="hidden space-y-4 pt-3 border-t border-slate-800">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-slate-900 p-4 rounded-xl border border-slate-800"><span class="text-[11px] font-bold text-slate-400">Total Facturado</span><div id="resLiqTotalSales" class="text-2xl font-mono font-bold text-white mt-1">$ 0,00</div></div>
+                            <div class="bg-purple-950/20 p-4 rounded-xl border border-purple-500/40"><span class="text-[11px] font-bold text-purple-400">Comisión a Pagar</span><div id="resLiqTotalComm" class="text-2xl font-mono font-bold text-purple-400 mt-1">$ 0,00</div></div>
+                        </div>
+                        <div class="overflow-x-auto"><table class="w-full text-left text-xs border-collapse"><tbody id="liqTableBody" class="divide-y divide-slate-800"></tbody></table></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- TAB 7: CIERRE DIARIO DE CAJA & 4 BOLSILLOS (MÓDULO NUEVO)          -->
+        <!-- =================================================================== -->
+        <section id="tab7" class="hidden space-y-6">
+            <div class="card-pro p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                        <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-vault text-emerald-400"></i> Cierre Diario de Caja & Repartición de Bolsillos
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">Separá la plata física de hoy en los 4 sobres y controlá la proyección del fiado en la calle.</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center gap-2 bg-[#09101d] px-3 py-1.5 rounded-lg border border-slate-800">
+                            <label class="text-xs text-slate-400 font-semibold">Fecha del Cierre:</label>
+                            <input type="date" id="cajaClosingDate" onchange="calculateDailyClosing()" class="input-pro px-2.5 py-1 text-xs font-mono">
+                        </div>
+                        <button onclick="calculateDailyClosing()" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs px-4 py-2.5 rounded-xl transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-calculator"></i> Calcular Cierre
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resumen Superior de Totales -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div class="bg-[#09101d] border border-slate-800 rounded-xl p-4">
+                        <span class="text-xs font-medium text-slate-400">Total Facturado en el Día</span>
+                        <div id="cajaDayBilled" class="text-2xl font-mono font-extrabold text-white mt-1">$ 0,00</div>
+                        <span class="text-[10px] text-slate-500">Cobrado + Fiado</span>
+                    </div>
+                    <div class="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-4">
+                        <span class="text-xs font-medium text-emerald-400">Cobrado en Mano (Caja Real)</span>
+                        <div id="cajaDayCash" class="text-2xl font-mono font-extrabold text-emerald-400 mt-1">$ 0,00</div>
+                        <span class="text-[10px] text-emerald-300">Plata física para embolsar hoy</span>
+                    </div>
+                    <div class="bg-rose-950/20 border border-rose-500/30 rounded-xl p-4">
+                        <span class="text-xs font-medium text-rose-400">Plata en la Calle (Fiado del Día)</span>
+                        <div id="cajaDayCredit" class="text-2xl font-mono font-extrabold text-rose-400 mt-1">$ 0,00</div>
+                        <span class="text-[10px] text-rose-300">Pendiente de cobro</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grilla de los 4 Bolsillos -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <!-- Bolsillo 1: Mercadería -->
+                <div class="card-pro p-5 border-t-4 border-t-slate-400 flex flex-col justify-between space-y-3">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase text-slate-300 block">1. Reposición de Stock</span>
+                        <span class="text-[10px] text-slate-500 leading-tight block mt-0.5">Dinero de proveedores y reposición</span>
+                    </div>
+                    <div class="bg-[#09101d] p-3 rounded-lg border border-slate-800 space-y-1.5">
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-[10px] text-slate-400">En Mano:</span>
+                            <span id="pocketStockCash" class="font-mono font-extrabold text-white text-sm">$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-baseline text-[10px] text-slate-500">
+                            <span>En la Calle:</span>
+                            <span id="pocketStockCredit" class="font-mono">$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-baseline pt-1 border-t border-slate-800 text-[10px] font-bold text-slate-300">
+                            <span>Total Proyectado:</span>
+                            <span id="pocketStockTotal" class="font-mono">$ 0,00</span>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-slate-500 bg-slate-900/80 p-2 rounded text-center">
+                        🔒 <strong>Intocable:</strong> para recomprar mercadería.
+                    </div>
+                </div>
+
+                <!-- Bolsillo 2: Fijos -->
+                <div class="card-pro p-5 border-t-4 border-t-blue-400 flex flex-col justify-between space-y-3">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase text-blue-400 block">2. Reserva Gastos Fijos</span>
+                        <span class="text-[10px] text-slate-500 leading-tight block mt-0.5">Alquiler, luz, flete y estructura</span>
+                    </div>
+                    <div class="bg-[#09101d] p-3 rounded-lg border border-slate-800 space-y-1.5">
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-[10px] text-blue-300">En Mano:</span>
+                            <span id="pocketFixedCash" class="font-mono font-extrabold text-blue-400 text-sm">$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-baseline text-[10px] text-slate-500">
+                            <span>En la Calle:</span>
+                            <span id="pocketFixedCredit" class="font-mono">$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-baseline pt-1 border-t border-slate-800 text-[10px] font-bold text-blue-300">
+                            <span>Total Proyectado:</span>
+                            <span id="pocketFixedTotal" class="font-mono">$ 0,00</span>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-blue-400 bg-blue-950/20 p-2 rounded text-center border border-blue-500/20">
+                        🏢 Apartar al sobre de gastos mensuales.
+                    </div>
+                </div>
+
+                <!-- Bolsillo 3: Comisiones -->
+                <div class="card-pro p-5 border-t-4 border-t-purple-400 flex flex-col justify-between space-y-3">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase text-purple-400 block">3. Comisión Vendedores</span>
+                        <span class="text-[10px] text-slate-500 leading-tight block mt-0.5">Fuerza comercial y preventistas</span>
+                    </div>
+                    <div class="bg-[#09101d] p-3 rounded-lg border border-slate-800 space-y-1.5">
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-[10px] text-purple-300">En Mano:</span>
+                            <span id="pocketCommCash" class="font-mono font-extrabold text-purple-400 text-sm">$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-baseline text-[10px] text-slate-500">
+                            <span>En la Calle:</span>
+                            <span id="pocketCommCredit" class="font-mono">$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-baseline pt-1 border-t border-slate-800 text-[10px] font-bold text-purple-300">
+                            <span>Total Proyectado:</span>
+                            <span id="pocketCommTotal" class="font-mono">$ 0,00</span>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-purple-400 bg-purple-950/20 p-2 rounded text-center border border-purple-500/20">
+                        👥 Guardar para liquidación quincenal.
+                    </div>
+                </div>
+
+                <!-- Bolsillo 4: Ganancia Limpia -->
+                <div class="card-pro p-5 border-t-4 border-t-emerald-400 flex flex-col justify-between space-y-3">
+                    <div>
+                        <span class="text-[11px] font-bold uppercase text-emerald-400 block">4. Ganancia Limpia</span>
+                        <span class="text-[10px] text-slate-500 leading-tight block mt-0.5">Beneficio neto real del titular</span>
+                    </div>
+                    <div class="bg-[#09101d] p-3 rounded-lg border border-slate-800 space-y-1.5">
+                        <div class="flex justify-between items-baseline">
+                            <span class="text-[10px] text-emerald-300">En Mano:</span>
+                            <span id="pocketProfitCash" class="font-mono font-extrabold text-emerald-400 text-sm">$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-baseline text-[10px] text-slate-500">
+                            <span>En la Calle:</span>
+                            <span id="pocketProfitCredit" class="font-mono">$ 0,00</span>
+                        </div>
+                        <div class="flex justify-between items-baseline pt-1 border-t border-slate-800 text-[10px] font-bold text-emerald-300">
+                            <span>Total Proyectado:</span>
+                            <span id="pocketProfitTotal" class="font-mono">$ 0,00</span>
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-emerald-300 bg-emerald-950/30 p-2 rounded text-center border border-emerald-500/30">
+                        💰 Ganancia tuya lista para retirar.
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Arqueo de Efectivo & Acciones -->
+            <div class="card-pro p-6 space-y-5">
+                <h3 class="text-sm font-extrabold text-white uppercase tracking-wider">Arqueo Rápido de Efectivo en Cajón</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1.5">Efectivo Contado Físicamente en Cajón ($):</label>
+                        <input type="number" id="cajaCountedCash" oninput="runCashAudit()" placeholder="Ingresá los billetes contados" class="input-pro w-full px-3.5 py-2.5 text-sm font-mono font-bold">
+                    </div>
+
+                    <div id="cajaAuditBox" class="p-4 rounded-xl border border-slate-800 bg-[#09101d]">
+                        <span class="text-xs text-slate-400 block mb-0.5">Resultado del Arqueo:</span>
+                        <div id="cajaAuditDiff" class="text-lg font-mono font-bold text-slate-300">$ 0,00</div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button onclick="printDailyClosingPDF()" class="bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs px-5 py-3 rounded-xl transition flex items-center gap-2 shadow-lg shadow-blue-600/30">
+                        <i class="fa-solid fa-print"></i> Imprimir Comprobante de Cierre A4
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODALES -->
+    <div id="cloudModal" class="modal-backdrop"><div class="card-pro max-w-md w-full p-6 space-y-4 border-blue-500/40"><div class="flex justify-between items-center"><h3 class="text-base font-bold text-white">Google Sheets</h3><button onclick="closeCloudModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div><input type="text" id="cloudUrlInput" class="input-pro w-full px-3 py-2 text-xs font-mono"><div class="flex justify-between gap-2 pt-2"><button onclick="uploadAllToCloud()" class="px-3 py-2 rounded bg-emerald-600/30 text-emerald-300 text-xs font-bold">Subir Todo</button><button onclick="syncFromCloudNow()" class="px-3 py-2 rounded bg-blue-600/20 text-blue-300 text-xs font-semibold">Descargar</button><button onclick="saveCloudConfig()" class="px-4 py-2 rounded bg-emerald-500 text-slate-950 text-xs font-bold">Guardar</button></div></div></div>
+    
+    <div id="newCategoryModal" class="modal-backdrop">
+        <div class="card-pro max-w-sm w-full p-5 space-y-3 border-emerald-500/40">
+            <h3 class="text-sm font-extrabold text-white">Crear Nueva Categoría</h3>
+            <input type="text" id="newCatInput" placeholder="Ej: Aceites, Lácteos, Arroces..." onkeydown="if(event.key==='Enter'){event.preventDefault();saveNewCategory();}" class="input-pro w-full px-3 py-2 text-xs">
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeNewCategoryModal()" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white">Cancelar</button>
+                <button type="button" onclick="saveNewCategory()" class="px-3 py-1.5 text-xs font-bold bg-emerald-500 text-slate-950 rounded hover:bg-emerald-400">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="newSupplierModal" class="modal-backdrop">
+        <div class="card-pro max-w-sm w-full p-5 space-y-3 border-amber-500/40">
+            <h3 class="text-sm font-extrabold text-white">Registrar Nuevo Proveedor</h3>
+            <p class="text-xs text-slate-400">Ingresá la distribuidora, fábrica o mayorista:</p>
+            <input type="text" id="newSupInput" placeholder="Ej: Molinos, Arcor, Diarco..." onkeydown="if(event.key==='Enter'){event.preventDefault();saveNewSupplier();}" class="input-pro w-full px-3 py-2 text-xs">
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeNewSupplierModal()" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white">Cancelar</button>
+                <button type="button" onclick="saveNewSupplier()" class="px-3 py-1.5 text-xs font-bold bg-amber-500 text-slate-950 rounded hover:bg-amber-400">Guardar Proveedor</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bizNameModal" class="modal-backdrop"><div class="card-pro max-w-sm w-full p-5 space-y-3"><h3 class="text-sm font-bold text-white">Datos del Negocio</h3><input type="text" id="modalBizNameInput" class="input-pro w-full px-3 py-2 text-xs" placeholder="Nombre"><input type="text" id="modalBizContactInput" class="input-pro w-full px-3 py-2 text-xs" placeholder="Contacto"><div class="flex justify-end gap-2"><button onclick="closeBizNameModal()" class="px-3 py-1 text-xs text-slate-400">Cancelar</button><button onclick="saveBizName()" class="px-3 py-1 text-xs bg-emerald-500 text-slate-950 font-bold rounded">Guardar</button></div></div></div>
+    <div id="clientDirectoryModal" class="modal-backdrop"><div class="card-pro max-w-2xl w-full p-6 space-y-4 max-h-[90vh] flex flex-col"><div class="flex justify-between items-center"><h3 class="text-base font-bold text-white">Directorio de Clientes VIP</h3><button onclick="closeClientDirectoryModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div><div id="clientDirectoryList" class="flex-1 overflow-y-auto space-y-2"></div></div></div>
+    <div id="remitoModal" class="modal-backdrop"><div class="card-pro max-w-lg w-full p-6 space-y-4"><div class="flex justify-between items-center"><span class="text-xs font-bold text-emerald-400 uppercase">Comprobante de Venta</span><button onclick="closeRemitoModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div><div id="remitoPrintArea" class="bg-slate-950 p-4 rounded-xl text-xs space-y-2"><h2 id="remitoBizTitle" class="font-extrabold text-white uppercase text-sm"></h2><p id="remitoClientInfo" class="text-slate-300"></p><div id="remitoItemsTable" class="space-y-1 py-1"></div><div class="border-t border-slate-800 pt-2 flex justify-between font-bold text-sm"><span class="text-white">TOTAL:</span><span id="remitoGrandTotal" class="text-emerald-400 font-mono"></span></div></div><div class="grid grid-cols-2 gap-2"><button onclick="sendRemitoWhatsApp()" class="bg-emerald-500 text-slate-950 font-bold text-xs py-2 rounded-xl">WhatsApp</button><button onclick="executeIsolatedRemitoPrint()" class="bg-blue-600 text-white font-bold text-xs py-2 rounded-xl">Imprimir Remito A4</button></div></div></div>
+    <div id="catalogPDFModal" class="modal-backdrop"><div class="bg-slate-900 border border-slate-700 max-w-4xl w-full p-6 rounded-2xl space-y-4 max-h-[95vh] flex flex-col"><div class="flex justify-between items-center"><h3 class="text-base font-extrabold text-white">Catálogo PDF</h3><div class="flex gap-2"><button onclick="executeIsolatedCatalogPrint()" class="bg-blue-600 text-white font-bold text-xs px-4 py-2 rounded-xl">Imprimir A4</button><button onclick="closeCatalogPDFModal()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button></div></div><div class="flex-1 overflow-y-auto bg-slate-950 p-4 rounded-xl"><div id="pdfModalPreviewBox" class="bg-white text-slate-900 p-6 rounded mx-auto max-w-[800px]"></div></div></div></div>
+    
+    <div id="toastBox" class="fixed bottom-5 right-5 z-50 hidden bg-slate-900 border border-emerald-500/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-xs font-semibold"><i class="fa-solid fa-circle-check text-emerald-400 text-base"></i><span id="toastMsg">Operación exitosa</span></div>
+    <iframe id="printIsolatedFrame" style="position: absolute; width: 0; height: 0; border: 0; visibility: hidden;"></iframe>
+
+    <script>
+        function openNewSupplierModal() {
+            const m = document.getElementById('newSupplierModal');
+            if (m) m.classList.add('open');
+            const inp = document.getElementById('newSupInput');
+            if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 60); }
+        }
+        function closeNewSupplierModal() {
+            const m = document.getElementById('newSupplierModal');
+            if (m) m.classList.remove('open');
+        }
+    </script>
+
+    <!-- CARGA DE LOS MÓDULOS DEL SISTEMA -->
+    <script src="sistema.js"></script>
+    <script src="ventas.js"></script>
+    <script src="caja.js"></script>
+<!-- Registro del Service Worker y persistencia de memoria -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(() => console.log('Nexo PWA: Service Worker activo.'))
+        .catch(err => console.error('Error registrando SW:', err));
+    });
+  }
+
+  // Protección del almacenamiento local contra limpiadores automáticos de Android
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().then((persistent) => {
+      if (persistent) {
+        console.log('Nexo PWA: Almacenamiento local persistente garantizado.');
+      }
+    });
+  }
+</script>
+</body>
+</html>
