@@ -746,7 +746,9 @@ function renderCatalog() {
                     <td class="text-right font-mono text-slate-400">${fmtARS(p.m.baseCost)}</td>
                     <td class="text-right font-mono font-bold text-white">${fmtARS(p.m.finalPVP)}</td>
                     <td class="text-right font-mono text-blue-400">${fmtARS(p.m.fixedAmt)}</td>
-                    <td class="text-right font-mono text-purple-300">${fmtARS(p.m.sellerAmt)}</td>
+                    <td class="text-right">
+    <span class="font-mono text-purple-300 font-bold block">${fmtARS(p.m.sellerAmt)}</span>
+    <span class="text-[10px] text-purple-400/80 font-mono">(${Number(p.sellerPct || 0).toFixed(1)}%)</span></td>
                     <td class="text-right font-mono text-emerald-400 font-bold">${fmtARS(p.m.netProfitAmt)}</td>
                     <td class="text-center font-mono font-bold text-amber-300">${p.m.roiPct.toFixed(1)}%</td>
                     <td class="text-center">
