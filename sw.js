@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nexo-gestor-v4';
+const CACHE_NAME = 'nexo-gestor-v5';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
