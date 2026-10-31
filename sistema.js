@@ -3,11 +3,12 @@
 // ===================================================================
 
 const STORAGE_KEY = 'nexo_gestor_cloud_v1';
-const DEFAULT_APPSCRIPT_URL = ''; // En blanco por defecto para que no se mezclen los datos de los clientes
+const DEFAULT_APPSCRIPT_URL = ''; 
 
 let donutChartInstance = null;
 let currentEditingId = null;
 let tempProdImageBase64 = '';
+let isSyncing = false;
 
 const defaultState = {
     bizConfig: { name: 'Mi Distribuidora / Comercio', contact: 'Presidencia Roque Sáenz Peña, Chaco' },
@@ -66,7 +67,7 @@ function sanitizeState(data) {
 function saveState() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        syncToCloud();
+        syncToCloud(); // Subida automática en segundo plano
         refreshAllViews();
     } catch (err) {
         console.error("Error al guardar estado:", err);
@@ -113,24 +114,50 @@ function refreshAllViews() {
     if (typeof renderCatalog === 'function') renderCatalog();
     if (typeof renderMixTab === 'function') renderMixTab();
     if (typeof renderSalesHistory === 'function') renderSalesHistory();
-    if (typeof renderSellersList === 'function') renderSellersList();
+    if (typeof renderSellersTab === 'function') renderSellersTab();
     if (typeof updateCartPreviews === 'function') updateCartPreviews();
     updateCloudStatusUI(Boolean(state.cloudUrl));
 }
 
-// --- SINCRONIZACIÓN GOOGLE SHEETS (CONFIGURABLE POR CLIENTE) ---
+// --- SINCRONIZACIÓN AUTOMÁTICA EN SEGUNDO PLANO ---
 function syncToCloud() {
-    if (!state.cloudUrl || !state.cloudUrl.startsWith('https://script.google.com')) {
-        updateCloudStatusUI(false);
-        return;
-    }
+    if (!state.cloudUrl || !state.cloudUrl.startsWith('https://script.google.com')) return;
+    updateCloudStatusUI('syncing');
     fetch(state.cloudUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(state)
-    }).then(() => updateCloudStatusUI(true))
-      .catch(() => updateCloudStatusUI(false));
+    }).then(() => {
+        updateCloudStatusUI(true);
+    }).catch(() => {
+        updateCloudStatusUI(false);
+    });
+}
+
+function syncFromCloudSilent() {
+    if (!state.cloudUrl || !state.cloudUrl.startsWith('https://script.google.com') || isSyncing) return;
+    isSyncing = true;
+    updateCloudStatusUI('syncing');
+
+    fetch(state.cloudUrl + '?t=' + Date.now(), { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => {
+            isSyncing = false;
+            if (data && typeof data === 'object' && (data.catalog || data.sales || data.expenses)) {
+                state = sanitizeState(data);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                refreshAllViews();
+                updateCloudStatusUI(true);
+            } else {
+                updateCloudStatusUI(true);
+            }
+        })
+        .catch(err => {
+            isSyncing = false;
+            console.warn("Fallo descarga silenciosa:", err);
+            updateCloudStatusUI(false);
+        });
 }
 
 function uploadAllToCloud() {
@@ -138,7 +165,8 @@ function uploadAllToCloud() {
         showToast('Configurá la URL de Google Sheets primero');
         return;
     }
-    showToast('Subiendo todos los datos a Google Sheets...');
+    showToast('Subiendo datos a Google Sheets...');
+    updateCloudStatusUI('syncing');
     fetch(state.cloudUrl, {
         method: 'POST',
         mode: 'no-cors',
@@ -159,6 +187,7 @@ function syncFromCloudNow() {
         return;
     }
     showToast('Descargando datos de la nube...');
+    updateCloudStatusUI('syncing');
     fetch(state.cloudUrl + '?t=' + Date.now(), { cache: 'no-store' })
         .then(r => r.json())
         .then(data => {
@@ -168,16 +197,39 @@ function syncFromCloudNow() {
                 refreshAllViews();
                 showToast('¡Datos sincronizados desde Google Sheets!');
                 closeCloudModal();
+                updateCloudStatusUI(true);
             }
         })
-        .catch(() => showToast('Error al conectar con Google Sheets'));
+        .catch(() => {
+            showToast('Error al conectar con Google Sheets');
+            updateCloudStatusUI(false);
+        });
 }
 
 function openCloudModal() {
     const el = document.getElementById('cloudUrlInput');
     if (el) el.value = state.cloudUrl || '';
     const modal = document.getElementById('cloudModal');
-    if (modal) modal.classList.add('open');
+    if (modal) {
+        modal.classList.add('open');
+        // Botón inteligente para mandarse el link al celular por WhatsApp
+        let mobileBox = document.getElementById('btnMobileSyncBox');
+        if (!mobileBox) {
+            const container = modal.querySelector('.space-y-1');
+            if (container) {
+                mobileBox = document.createElement('div');
+                mobileBox.id = 'btnMobileSyncBox';
+                mobileBox.className = 'pt-2.5';
+                mobileBox.innerHTML = `
+                    <button type="button" onclick="copyMobileSyncLink()" class="w-full py-2.5 px-3 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-mobile-screen"></i> Copiar enlace para abrir en el celular
+                    </button>
+                    <p class="text-[10px] text-slate-400 mt-1 text-center">Te copia el link de Nexo con tu planilla vinculada. Pegalo en WhatsApp y al abrirlo en el celular queda conectado automáticamente.</p>
+                `;
+                container.appendChild(mobileBox);
+            }
+        }
+    }
 }
 
 function closeCloudModal() {
@@ -201,13 +253,45 @@ function saveCloudConfig() {
     }
 }
 
-function updateCloudStatusUI(connected) {
+function copyMobileSyncLink() {
+    if (!state.cloudUrl) {
+        showToast('Primero guardá la URL de tu planilla');
+        return;
+    }
+    const fullUrl = `${window.location.origin}${window.location.pathname}?sync=${encodeURIComponent(state.cloudUrl)}`;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+        showToast('¡Enlace copiado! Pegalo en WhatsApp y abrilo en el celular');
+    });
+}
+
+function checkUrlParamsForSync() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const syncUrl = params.get('sync') || params.get('cloud');
+        if (syncUrl && syncUrl.startsWith('https://script.google.com')) {
+            state.cloudUrl = decodeURIComponent(syncUrl);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            window.history.replaceState({}, document.title, window.location.pathname);
+            showToast('¡Planilla vinculada con éxito en este dispositivo!');
+            syncFromCloudSilent();
+        }
+    } catch (e) {
+        console.error("Error al procesar parámetro de sincronización:", e);
+    }
+}
+
+function updateCloudStatusUI(status) {
     const dot = document.getElementById('cloudStatusDot');
     const txt = document.getElementById('cloudStatusText');
     const icon = document.getElementById('cloudIcon');
     if (!dot || !txt || !icon) return;
 
-    if (state.cloudUrl && connected) {
+    if (status === 'syncing') {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-ping';
+        txt.textContent = 'Sincronizando...';
+        txt.className = 'font-semibold text-amber-300';
+        icon.className = 'fa-solid fa-arrows-rotate fa-spin text-amber-400';
+    } else if (state.cloudUrl && status === true) {
         dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
         txt.textContent = 'En la Nube (Google)';
         txt.className = 'font-semibold text-emerald-400';
@@ -225,10 +309,26 @@ function updateCloudStatusUI(connected) {
     }
 }
 
-// Inicializa el indicador de conexión al cargar la app
+// Sincronización automática de inicio y cambio de ventana
 window.addEventListener('DOMContentLoaded', () => {
+    checkUrlParamsForSync();
     updateCloudStatusUI(Boolean(state.cloudUrl));
     refreshAllViews();
+    if (state.cloudUrl) {
+        setTimeout(syncFromCloudSilent, 800);
+    }
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.cloudUrl) {
+        syncFromCloudSilent();
+    }
+});
+
+window.addEventListener('focus', () => {
+    if (state.cloudUrl) {
+        syncFromCloudSilent();
+    }
 });
 
 // --- UTILIDADES ---
@@ -747,8 +847,9 @@ function renderCatalog() {
                     <td class="text-right font-mono font-bold text-white">${fmtARS(p.m.finalPVP)}</td>
                     <td class="text-right font-mono text-blue-400">${fmtARS(p.m.fixedAmt)}</td>
                     <td class="text-right">
-    <span class="font-mono text-purple-300 font-bold block">${fmtARS(p.m.sellerAmt)}</span>
-    <span class="text-[10px] text-purple-400/80 font-mono">(${Number(p.sellerPct || 0).toFixed(1)}%)</span></td>
+                        <span class="font-mono text-purple-300 font-bold block">${fmtARS(p.m.sellerAmt)}</span>
+                        <span class="text-[10px] text-purple-400/80 font-mono">(${Number(p.sellerPct || 0).toFixed(1)}%)</span>
+                    </td>
                     <td class="text-right font-mono text-emerald-400 font-bold">${fmtARS(p.m.netProfitAmt)}</td>
                     <td class="text-center font-mono font-bold text-amber-300">${p.m.roiPct.toFixed(1)}%</td>
                     <td class="text-center">
